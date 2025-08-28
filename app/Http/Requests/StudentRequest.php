@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Enum;
+use App\Enums\Gender;
 
 class StudentRequest extends FormRequest
 {
@@ -26,7 +28,12 @@ class StudentRequest extends FormRequest
       'last_name' => 'required|string|max:255',
       'email' => 'required|email|unique:students,email,' . $this->route('student'),
       'date_of_birth' => 'nullable|date',
-      'gender' => 'nullable|string|max:10',
+      'gender' => [
+        'nullable',
+        'string',
+        'max:10',
+        new Enum(Gender::class),
+      ],
       'address' => 'nullable|string|max:255',
     ];
   }

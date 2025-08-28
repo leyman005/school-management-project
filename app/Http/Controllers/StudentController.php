@@ -6,10 +6,16 @@ use Illuminate\Http\Request;
 use App\Models\Student;
 use App\Http\Requests\StudentRequest;
 
+/**
+ * Student management controller
+ * Handles CRUD operations for students
+ */
+
 class StudentController extends Controller
 {
-  // Controller methods will go here
-
+  /**
+   * Display a listing of the resource.
+   */
   public function index()
   {
     // Fetch all students from the database
@@ -17,6 +23,21 @@ class StudentController extends Controller
     return response()->json($students, 200);
   }
 
+  /**
+   * Store a newly created resource in storage.
+   */
+  public function store(StudentRequest $request)
+  {
+    // Validate and create a new student
+    $validated_data = $request->validated();
+
+    $student = Student::create($validated_data);
+    return response()->json($student, 201);
+  }
+
+  /**
+   * Display the specified resource.
+   */
   public function show($id)
   {
     // Fetch a single student by ID
@@ -28,15 +49,9 @@ class StudentController extends Controller
     }
   }
 
-  public function store(StudentRequest $request)
-  {
-    // Validate and create a new student
-    $validated_data = $request->validated();
-
-    $student = Student::create($validated_data);
-    return response()->json($student, 201);
-  }
-
+  /**
+   * Update the specified resource in storage.
+   */
   public function update(StudentRequest $request, $id)
   {
     // Validate and update an existing student
@@ -51,6 +66,9 @@ class StudentController extends Controller
     }
   }
 
+  /**
+   * Remove the specified resource from storage.
+   */
   public function destroy($id)
   {
     // Delete a student by ID

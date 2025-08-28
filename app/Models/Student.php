@@ -8,7 +8,8 @@ class Student extends Model
 {
   protected $guarded = [];
 
-  protected $casts = [
-    'date_of_birth' => 'date',
+  protected $hidden = [
+    'created_at',
+    'updated_at',
   ];
 }
