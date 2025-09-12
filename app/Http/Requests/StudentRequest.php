@@ -27,6 +27,9 @@ class StudentRequest extends FormRequest
       'first_name' => 'required|string|max:255',
       'last_name' => 'required|string|max:255',
       'email' => 'required|email|unique:students,email,' . $this->route('student'),
+      'student_pin' => 'required|string|min:4|max:10',
+      'student_number' => 'required|string|unique:students,student_number,' . $this->route('student'),
+      'phone' => 'nullable|string|max:15',
       'date_of_birth' => 'nullable|date',
       'gender' => [
         'nullable',
