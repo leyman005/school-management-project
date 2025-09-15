@@ -26,9 +26,10 @@ class StudentRequest extends FormRequest
     return [
       'first_name' => 'required|string|max:255',
       'last_name' => 'required|string|max:255',
+      'middle_name' => 'nullable|string|max:255',
       'email' => 'required|email|unique:students,email,' . $this->route('student'),
-      'student_pin' => 'required|string|min:4|max:10',
-      'student_number' => 'required|string|unique:students,student_number,' . $this->route('student'),
+      'student_pin' => 'required|numeric|digits:5',
+      'student_number' => 'required|alpha_num|min:4|max:15|unique:students,student_number,' . $this->route('student'),
       'phone' => 'nullable|string|max:15',
       'date_of_birth' => 'nullable|date',
       'gender' => [
@@ -38,6 +39,8 @@ class StudentRequest extends FormRequest
         new Enum(Gender::class),
       ],
       'address' => 'nullable|string|max:255',
+      'status' => 'nullable|string|in:active,inactive,suspended,graduated,expelled,blocked',
+      'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
     ];
   }
 }

@@ -15,6 +15,7 @@ return new class extends Migration
       $table->id();
       $table->string('first_name');
       $table->string('last_name');
+      $table->string('middle_name')->nullable();
       $table->string('email')->unique();
       $table->string('student_pin')->unique();
       $table->rememberToken();
@@ -23,6 +24,9 @@ return new class extends Migration
       $table->date('date_of_birth')->nullable();
       $table->string('gender')->nullable();
       $table->string('address')->nullable();
+      $table->string('profile_picture')->nullable();
+      $table->string('status')->default('active');
+      $table->string('google2fa_secret')->nullable();
       $table->timestamps();
     });
   }

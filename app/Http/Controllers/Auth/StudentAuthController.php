@@ -6,14 +6,21 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Student;
 use App\Http\Requests\StudentRequest;
 use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\RateLimiter;
+use App\Services\AuthService;
 
 class StudentAuthController extends Controller
 {
+	protected $auth_service;
+
+	public function __construct(AuthService $auth_service) {
+		$this->auth_service = $auth_service;
+	}
+
 	/**
 	 * Summary of login
 	 * @param \Illuminate\Http\Request $request
@@ -21,30 +28,26 @@ class StudentAuthController extends Controller
 	 */
 	public function login(Request $request)
 	{
+		// Validate input
 		$validator = Validator::make($request->all(), [
-			'student_number' => 'required|string',
-			'student_pin' => 'required|string',
+			'student_number' => 'required|alpha_num|min:4|max:15',
+			'student_pin'    => 'required|numeric|digits:5',
 		]);
 
 		if ($validator->fails()) {
 			return response()->json(['errors' => $validator->errors()], 422);
 		}
 
-		$credentials = $request->only('student_number', 'student_pin');
-
-		$student = Student::where('student_number', $credentials['student_number'])->first();
-
-		if ($student && Hash::check($credentials['student_pin'], $student->student_pin)) {
-			$token = $student->createToken('auth_token')->plainTextToken;
-
-			return response()->json([
-				'access_token' => $token,
-				'token_type' => 'Bearer',
-				'student' => $student,
-			]);
+		try {
+			$result = $this->auth_service->attemptLogin($request->only('student_number', 'student_pin'), $request->ip());
+			return response()->json($result);
+		} catch (\Illuminate\Validation\ValidationException $e) {
+			return response()->json($e->errors(), 429);
+		} catch (\Illuminate\Auth\AuthenticationException $e) {
+			return response()->json(['error' => $e->getMessage()], 401);
+		} catch (\Exception $e) {
+			return response()->json(['error' => 'Login failed: ' . $e->getMessage()], 500);
 		}
-
-		return response()->json(['message' => 'Invalid credentials'], 401);
 	}
 
 	/**
@@ -86,7 +89,12 @@ class StudentAuthController extends Controller
 	{
 		// Validate the request
 		$validated_data = $request->validated();
+
+		// Hash the student_pin
 		$validated_data['student_pin'] = Hash::make($validated_data['student_pin']);
+
+		// Combine first_name, middle_name, and last_name into name (Still need to be implemented).
+		// $validated_data['name'] = $validated_data['first_name'] . ' ' . ($validated_data['middle_name'] ?? '') . ' ' . $validated_data['last_name'];
 
 		// Create the student
 		$student = Student::create($validated_data);
