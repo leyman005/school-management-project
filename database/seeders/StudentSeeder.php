@@ -18,7 +18,7 @@ class StudentSeeder extends Seeder
 			'first_name' => 'John',
 			'middle_name' => 'A.',
 			'last_name' => 'Doe',
-			'student_number' => 'S123456',
+			'student_number' => '123456789',
 			'student_pin' => bcrypt('12345'),
 			'email' => 'john.doe@example.com',
 			'status' => 'active',
@@ -26,6 +26,22 @@ class StudentSeeder extends Seeder
 			'phone' => null,
 			'date_of_birth' => null,
 			'address' => null,
+			'google2fa_secret' => null,
+		]);
+
+		Student::create([
+			'first_name' => 'Cedric',
+			'middle_name' => 'B.',
+			'last_name' => 'kafuka',
+			'student_number' => '241715280',
+			'student_pin' => bcrypt('12345'),
+			'email' => 'cedngk1985@gmail.com',
+			'status' => 'active',
+			'profile_picture' => null,
+			'phone' => '840681296',
+			'date_of_birth' => '1980-09-19',
+			'gender' => 'male',
+			'address' => '125 Becker Street, Bellevue, Johannesburg',
 			'google2fa_secret' => null,
 		]);
 	}
