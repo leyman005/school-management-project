@@ -30,7 +30,7 @@ class StudentAuthController extends Controller
 	{
 		// Validate input
 		$validator = Validator::make($request->all(), [
-			'student_number' => 'required|alpha_num|min:4|max:15',
+			'student_number' => 'required|numeric|digits:9',
 			'student_pin'    => 'required|numeric|digits:5',
 		]);
 
