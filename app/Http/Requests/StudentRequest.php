@@ -39,7 +39,7 @@ class StudentRequest extends FormRequest
         new Enum(Gender::class),
       ],
       'address' => 'nullable|string|max:255',
-      'status' => 'nullable|string|in:active,inactive,suspended,graduated,expelled,blocked',
+      'status' => 'nullable|string|in:active,inactive,suspended,graduated,expelled',
       'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
     ];
   }
