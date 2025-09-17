@@ -2,9 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Student;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -15,38 +14,41 @@ class AuthService
 {
   public function attemptLogin(array $credentials, string $ip)
   {
-    if (env('LOGIN_ATTEMPT_FEATURE', true)) {
-      $this->checkThrottle($credentials['student_number'], $ip);
+    if (config('auth.login.attempts_enabled', true)) {
+      $this->checkThrottle($credentials['user_number'], $ip);
     }
 
-    $student = Student::where('student_number', $credentials['student_number'])->first();
+    $user = User::where('user_number', $credentials['user_number'])->first();
 
-    if (!$student || !Hash::check($credentials['student_pin'], $student->student_pin)) {
+    if (!$user) {
       throw new AuthenticationException('Invalid credentials.');
     }
 
-    if ($student->status === 'inactive') {
+    if (!Hash::check($credentials['user_pin'], $user->user_pin)) {
+      throw new AuthenticationException('Invalid credentials.');
+    }
+
+    if ($user->status === 'inactive') {
       throw new AuthenticationException('Account is inactive. Please contact administration.');
     }
 
-    if (env('LOGIN_ATTEMPT_FEATURE', true)) {
-      $this->clearThrottle($credentials['student_number'], $ip);
+    if (config('auth.login.attempts_enabled', true)) {
+      $this->clearThrottle($credentials['user_number'], $ip);
     }
 
-    $token = $student->createToken('auth_token')->plainTextToken;
+    $token = $user->createToken('auth_token')->plainTextToken;
 
     return [
       'access_token' => $token,
       'token_type' => 'Bearer',
-      'student' => $student,
     ];
   }
 
-  protected function checkThrottle($studentNumber, $ip)
+  protected function checkThrottle($userNumber, $ip)
   {
-    $key = $this->getThrottleKey($studentNumber, $ip);
-    $maxAttempts = env('LOGIN_ATTEMPT_LIMIT', 5);
-    $decayMinutes = env('LOGIN_ATTEMPT_DECAY_MINUTES', 1);
+    $key = $this->getThrottleKey($userNumber, $ip);
+    $maxAttempts = config('auth.login.attempt_limit', 5);
+    $decayMinutes = config('auth.login.attempt_decay_minutes', 1);
 
     if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
       $seconds = RateLimiter::availableIn($key);
@@ -58,14 +60,14 @@ class AuthService
     RateLimiter::hit($key, $decayMinutes * 60);
   }
 
-  protected function clearThrottle($studentNumber, $ip)
+  protected function clearThrottle($UserNumber, $ip)
   {
-    $key = $this->getThrottleKey($studentNumber, $ip);
+    $key = $this->getThrottleKey($UserNumber, $ip);
     RateLimiter::clear($key);
   }
 
-  protected function getThrottleKey($studentNumber, $ip)
+  protected function getThrottleKey($UserNumber, $ip)
   {
-    return strtolower($studentNumber) . '|' . $ip;
+    return strtolower($UserNumber) . '|' . $ip;
   }
 }

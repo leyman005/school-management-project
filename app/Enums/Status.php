@@ -10,6 +10,7 @@ class Status
 	public const SUSPENDED = 'suspended';
 	public const GRADUATED = 'graduated';
 	public const EXPELLED = 'expelled';
+	public const PENDING = 'pending';
 
 	public static function all(): array
 	{
@@ -19,6 +20,7 @@ class Status
 			self::SUSPENDED,
 			self::GRADUATED,
 			self::EXPELLED,
+			self::PENDING,
 		];
 	}
 }

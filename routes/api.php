@@ -2,24 +2,20 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\Auth\StudentAuthController;
+use App\Http\Controllers\Auth\AuthController;
+use Illuminate\Container\Attributes\Auth;
 
 Route::get('/user', function (Request $request) {
-    return $request->user();
+	return $request->user();
 })->middleware('auth:sanctum');
 
-// Create a restful endpoint for students
-// Route::prefix('api')->group(function () {
-Route::apiResource('students', StudentController::class)->middleware('auth:sanctum');
-// });
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/register', [AuthController::class, 'register']);
 
-// Student authentication routes
 
-Route::prefix('student')->group(function () {
-	Route::post('/login', [StudentAuthController::class, 'login']);
-	Route::post('/logout', [StudentAuthController::class, 'logout'])->middleware('auth:sanctum');
-	Route::post('/register', [StudentAuthController::class, 'register']);
-	Route::post('/refresh', [StudentAuthController::class, 'refresh'])->middleware('auth:sanctum');
-    Route::post('/forgot-password', [StudentAuthController::class, 'forgotPassword']);
+Route::middleware('auth:sanctum')->group(function () {
+	Route::get('/profile', [AuthController::class, 'profile']);
+	Route::post('/refresh', [AuthController::class, 'refresh']);
+	Route::post('/logout', [AuthController::class, 'logout']);
 });

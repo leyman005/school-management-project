@@ -2,44 +2,54 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use App\Models\Student;
-use App\Http\Requests\StudentRequest;
-use Laravel\Sanctum\PersonalAccessToken;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\RateLimiter;
 use App\Services\AuthService;
+use App\Models\User;
+use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Facades\Hash;
+use App\Http\Requests\UserRequest;
+use Illuminate\Support\Str;
 
-class StudentAuthController extends Controller
+class AuthController extends Controller
 {
 	protected $auth_service;
 
-	public function __construct(AuthService $auth_service) {
+	public function __construct(AuthService $auth_service)
+	{
 		$this->auth_service = $auth_service;
 	}
 
-	/**
-	 * Summary of login
-	 * @param \Illuminate\Http\Request $request
-	 * @return \Illuminate\Http\JsonResponse
-	 */
 	public function login(Request $request)
 	{
-		// Validate input
-		$validator = Validator::make($request->all(), [
-			'student_number' => 'required|numeric|digits:9',
-			'student_pin'    => 'required|numeric|digits:5',
-		]);
+		// Validate input and provide custom error messages.
+		$validator = Validator::make(
+			$request->all(),
+			[
+				'user_number' => 'required|numeric|digits:9',
+				'user_pin'    => 'required|numeric|digits:5',
+			],
+			[
+				'user_number.required' => $request->input('role') === 'student'
+					|| $request->input('role') === '' ? 'Student number is required.' : 'Staff number is required.',
+				'user_number.numeric' => $request->input('role') === 'student'
+					|| $request->input('role') === '' ? 'Student number must be numeric.' : 'Staff number must be numeric.',
+				'user_number.digits'  => $request->input('role') === 'student'
+					|| $request->input('role') === '' ? 'Student number must be 9 digits.' : 'Staff number must be 9 digits.',
+				'user_pin.required' => 'PIN is required.',
+				'user_pin.numeric'  => 'PIN must be numeric.',
+				'user_pin.digits'   => 'PIN must be 5 digits.',
+			]
+		);
 
 		if ($validator->fails()) {
 			return response()->json(['errors' => $validator->errors()], 422);
 		}
 
 		try {
-			$result = $this->auth_service->attemptLogin($request->only('student_number', 'student_pin'), $request->ip());
+			$result = $this->auth_service->attemptLogin($request->only('user_number', 'user_pin'), $request->ip());
 			return response()->json($result);
 		} catch (\Illuminate\Validation\ValidationException $e) {
 			return response()->json($e->errors(), 429);
@@ -82,28 +92,25 @@ class StudentAuthController extends Controller
 
 	/**
 	 * Summary of register
-	 * @param \App\Http\Requests\StudentRequest $request
+	 * @param \App\Http\Requests\UserRequest $request
 	 * @return \Illuminate\Http\JsonResponse
 	 */
-	public function register(StudentRequest $request)
+	public function register(UserRequest $request)
 	{
 		// Validate the request
 		$validated_data = $request->validated();
 
-		// Hash the student_pin
-		$validated_data['student_pin'] = Hash::make($validated_data['student_pin']);
+		// Hash the pin
+		$validated_data['user_pin'] = Hash::make($validated_data['user_pin']);
 
-		// Combine first_name, middle_name, and last_name into name (Still need to be implemented).
-		// $validated_data['name'] = $validated_data['first_name'] . ' ' . ($validated_data['middle_name'] ?? '') . ' ' . $validated_data['last_name'];
+		// Create the user
+		$user = User::create($validated_data);
 
-		// Create the student
-		$student = Student::create($validated_data);
-
-		// Create token
-		$token = $student->createToken('auth_token')->plainTextToken;
-
+		if (!$user) {
+			return response()->json(['error' => 'User registration failed'], 500);
+		}
 		// Return response
-		return response()->json(['access_token' => $token, 'token_type' => 'Bearer', 'student' => $student], 201);
+		return response()->json(['message' => 'User registered successfully'], 201);
 	}
 
 	/**
@@ -157,26 +164,24 @@ class StudentAuthController extends Controller
 	public function forgotPassword(Request $request)
 	{
 		$validator = Validator::make($request->all(), [
-			'email' => 'required|email|exists:students,email',
+			'email' => 'required|email|exists:users,email',
 		]);
 
 		if ($validator->fails()) {
 			return response()->json(['errors' => $validator->errors()], 422);
 		}
 
-		$student = Student::where('email', $request->email)->first();
+		$user = User::where('email', $request->email)->first();
 
-		if ($student) {
-			// Generate a password reset token
-			$token = Str::random(60);
-			// $student->update(['reset_token' => $token]);
-
-			// Send the password reset email
-			// Mail::to($student->email)->send(new PasswordResetMail($token));
-
+		if ($user) {
 			return response()->json(['message' => 'Password reset email sent']);
 		}
 
-		return response()->json(['message' => 'Student not found'], 404);
+		return response()->json(['message' => 'User not found'], 404);
+	}
+
+	public function profile(Request $request)
+	{
+		return response()->json($request->user());
 	}
 }

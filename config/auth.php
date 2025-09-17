@@ -40,9 +40,9 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
-        'student' => [
+        'api' => [
             'driver' => 'sanctum',
-            'provider' => 'students',
+            'provider' => 'users',
         ],
     ],
 
@@ -67,10 +67,6 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
-        ],
-        'students' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\Student::class,
         ],
 
         // 'users' => [
@@ -119,5 +115,12 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+
+    // config/auth.php
+    'login' => [
+        'attempts_enabled' => env('LOGIN_ATTEMPT_FEATURE', true),
+        'max_attempts' => env('LOGIN_ATTEMPT_LIMIT', 5),
+        'decay_minutes' => env('LOGIN_ATTEMPT_DECAY_MINUTES', 1),
+    ],
 
 ];
