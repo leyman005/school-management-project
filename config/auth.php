@@ -122,5 +122,4 @@ return [
         'max_attempts' => env('LOGIN_ATTEMPT_LIMIT', 5),
         'decay_minutes' => env('LOGIN_ATTEMPT_DECAY_MINUTES', 1),
     ],
-
 ];

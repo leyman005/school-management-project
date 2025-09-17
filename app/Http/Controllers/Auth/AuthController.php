@@ -30,6 +30,7 @@ class AuthController extends Controller
 			[
 				'user_number' => 'required|numeric|digits:9',
 				'user_pin'    => 'required|numeric|digits:5',
+				'role' => 'nullable|string|in:student,admin,personnel',
 			],
 			[
 				'user_number.required' => $request->input('role') === 'student'
@@ -49,7 +50,7 @@ class AuthController extends Controller
 		}
 
 		try {
-			$result = $this->auth_service->attemptLogin($request->only('user_number', 'user_pin'), $request->ip());
+			$result = $this->auth_service->attemptLogin($request->only('user_number', 'user_pin', 'role', 'otp'), $request->ip());
 			return response()->json($result);
 		} catch (\Illuminate\Validation\ValidationException $e) {
 			return response()->json($e->errors(), 429);

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Facades\RateLimiter;
@@ -12,18 +13,72 @@ use Illuminate\Auth\AuthenticationException;
 
 class AuthService
 {
-  public function attemptLogin(array $credentials, string $ip)
+  protected Google2FA $google2fa;
+
+  public function __construct(Google2FA $google2fa)
   {
-    if (config('auth.login.attempts_enabled', true)) {
-      $this->checkThrottle($credentials['user_number'], $ip);
+    $this->google2fa = $google2fa;
+  }
+
+  public function attemptLogin(array $credentials, string $ip): array
+  {
+    $this->handleRateLimiting($credentials['user_number'], $ip);
+
+    $user = $this->getUserByCredentials($credentials);
+
+    $this->validateCredentials($user, $credentials);
+
+    // Verify 2FA if enabled
+    if ($user->google2fa_secret) {
+      $this->verifyTwoFactor($user, $credentials);
     }
 
-    $user = User::where('user_number', $credentials['user_number'])->first();
+    $this->clearRateLimit($credentials['user_number'], $ip);
+
+    return $this->generateTokenResponse($user);
+  }
+
+  public function enable2FA(User $user): array
+  {
+    if ($user->google2fa_secret) {
+      throw new \Exception('Two-factor authentication is already enabled for this account.');
+    }
+
+    $secretKey = $this->google2fa->generateSecretKey();
+
+    $user->google2fa_secret = $secretKey;
+    $user->save();
+
+    return [
+      'secret' => $secretKey,
+      'qr_code_url' => $this->google2fa->getQRCodeUrl(
+        config('app.name'),
+        $user->email,
+        $secretKey
+      ),
+    ];
+  }
+
+  // ------------------ PRIVATE METHODS ------------------
+
+  private function getUserByCredentials(array $credentials): User
+  {
+    $role = $credentials['role'] ?? 'student';
+
+    $user = User::where([
+      'user_number' => $credentials['user_number'],
+      'role' => $role,
+    ])->first();
 
     if (!$user) {
       throw new AuthenticationException('Invalid credentials.');
     }
 
+    return $user;
+  }
+
+  private function validateCredentials(User $user, array $credentials): void
+  {
     if (!Hash::check($credentials['user_pin'], $user->user_pin)) {
       throw new AuthenticationException('Invalid credentials.');
     }
@@ -31,11 +86,19 @@ class AuthService
     if ($user->status === 'inactive') {
       throw new AuthenticationException('Account is inactive. Please contact administration.');
     }
+  }
 
-    if (config('auth.login.attempts_enabled', true)) {
-      $this->clearThrottle($credentials['user_number'], $ip);
+  private function verifyTwoFactor(User $user, array $credentials): void
+  {
+    $otp = $credentials['otp'] ?? null;
+
+    if (!$otp || !$this->google2fa->verifyKey($user->google2fa_secret, $otp)) {
+      throw new AuthenticationException('Invalid or missing two-factor authentication token.');
     }
+  }
 
+  private function generateTokenResponse(User $user): array
+  {
     $token = $user->createToken('auth_token')->plainTextToken;
 
     return [
@@ -44,8 +107,12 @@ class AuthService
     ];
   }
 
-  protected function checkThrottle($userNumber, $ip)
+  private function handleRateLimiting(string $userNumber, string $ip): void
   {
+    if (!config('auth.login.attempts_enabled', true)) {
+      return;
+    }
+
     $key = $this->getThrottleKey($userNumber, $ip);
     $maxAttempts = config('auth.login.attempt_limit', 5);
     $decayMinutes = config('auth.login.attempt_decay_minutes', 1);
@@ -60,14 +127,17 @@ class AuthService
     RateLimiter::hit($key, $decayMinutes * 60);
   }
 
-  protected function clearThrottle($UserNumber, $ip)
+  private function clearRateLimit(string $userNumber, string $ip): void
   {
-    $key = $this->getThrottleKey($UserNumber, $ip);
-    RateLimiter::clear($key);
+    if (!config('auth.login.attempts_enabled', true)) {
+      return;
+    }
+
+    RateLimiter::clear($this->getThrottleKey($userNumber, $ip));
   }
 
-  protected function getThrottleKey($UserNumber, $ip)
+  private function getThrottleKey(string $userNumber, string $ip): string
   {
-    return strtolower($UserNumber) . '|' . $ip;
+    return strtolower($userNumber) . '|' . $ip;
   }
 }
